@@ -1,0 +1,107 @@
+{% extends 'djadmin/base.html' %}
+
+{% load djadmin_tags %}
+
+{% block title %}
+    数据表详情 - 后台管理
+{% endblock %}
+
+{% block content %}
+    <h1 class="page-header">应用 - {{ app_name }}</h1>
+    {{ queryset }}
+{% if admin_class.list_filter %}
+    <p>
+        <form class="navbar-form navbar-left">
+            {% for filter_field in admin_class.list_filter %}
+                {% build_option_filter filter_field admin_class %}
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">过滤</button>
+        </form>
+    </p>
+{% endif %}
+    <form method="post" onsubmit="ActionCheck(this)">
+    <div class="row">
+        <div class="col-md-3">
+            <select class="form-control" name="action">
+                <option value="">-------</option>
+                {% for action in admin_class.actions %}
+                    <option value="{{ action }}">{{ action }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% csrf_token %}
+        <div class="col-md-2">
+            <input type="submit" value="执行" class="btn btn-primary">
+        </div>
+    </div>
+</form>
+    <table class="table table-striped">
+        <thead>
+        <tr>
+        <th><input type="checkbox" onclick="SelectALLObjs(this)"></th>
+        {% if admin_class.list_display %}
+            {% for display_field in admin_class.list_display %}
+                <th>
+                    <a href="?_order={% get_sorted_data display_field current_order_field forloop.counter0 %}{% render_filter_args admin_class %}">
+                        {{ display_field }} {% get_sorted_arrow display_field current_order_field forloop.counter0 %}
+                    </a>
+                </th>
+            {% endfor %}
+        {% else %}
+            {% build_table_head_name admin_class %}
+        {% endif %}
+        <th>操作</th>
+            <!--
+            {% build_table_head_name admin_class %}
+            -->
+        </tr>
+        </thead>
+        <tbody>
+            {% for obj in queryset %}
+                <tr>
+                    <td><input row-select="true" type="checkbox" value="{{ obj.id }}"></td>
+                    {% build_table_body obj admin_class %}
+                    <td><a href="{% url 'djadmin:table_delete' app_name model_name obj.id %}">删除</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div>
+    {% include 'include/pagination.html' with page=queryset current_order_value=current_order_value %}
+</div>
+    <script>
+    function SelectALLObjs(ele) {
+        if ($(ele).prop('checked')){
+            $('input[row-select]').prop('checked',true)
+        }else{
+             $('input[row-select]').prop('checked',false)
+        }
+    }
+    function ActionCheck(ele) {
+            let selected_action = $("select[name='action']").val();  // 获取选择的功能
+            let selected_objs = $("input[row-select]").filter(":checked");  // 获取下方所有勾选
+            console.log(selected_action);
+            console.log(selected_objs);
+            if (!selected_action){
+                alert("没有选择的执行项！");
+                return false
+            }
+            //alert(selected_objs.length);
+            if (selected_objs.length == 0 ){
+                alert("没有选择数据项！");
+                return false
+            } else {
+                // 生成一个form标签，放在form里
+                let selected_ids = [];
+                $.each(selected_objs, function () {
+                    console.log($(this));
+                    selected_ids.push($(this).val())
+                });
+                console.log(selected_ids);
+                let input_ele = "<input type='hidden' name='selected_ids' value=" + JSON.stringify(selected_ids) + ">";
+                $(ele).append(input_ele);
+            }
+        }
+
+</script>
+{% endblock %}

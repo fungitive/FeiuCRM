@@ -1,0 +1,107 @@
+{% extends 'djadmin/base.html' %}
+
+{% load djadmin_tags %}
+
+{% block title %}
+    数据表编辑 - 后台管理
+{% endblock %}
+
+{% block content %}
+    <h1 class="page-header">{{ app_name }} - {{ model_name }} - 编辑 &nbsp;&nbsp; {{ obj }} </h1>
+    <!--<div>{{ form_obj }}</div>-->
+    <form class="form-horizontal" method="post" onsubmit="VerificationBeforeFormSubmit();">
+        {{ form_obj.errors }}
+
+        {% for field in form_obj %}
+            <div class="form-group">
+                <label class="col-sm-2 control-label">{{ field.label }}</label>
+                <div class="col-sm-10">
+                    {% if field.name in admin_class.filter_horizontal %}
+                        <!--字段名在多选的字段中，使用多选框-->
+                        <div class="col-md-5">
+                            <input type="search" class="form-control" oninput="FuzzySearch(this)" placeholder="模糊搜索">
+                            <select multiple class="form-control" id="id_{{ field.name }}_from">
+                                {% get_available_m2m_data field.name form_obj admin_class as vailable_m2m_data %}
+                                {% for obj in vailable_m2m_data %}
+                                    <option value="{{ obj.id }}" ondblclick="MoveSelectedOption(this,'id_{{ field.name }}_to')">{{ obj }}</option>
+                                {% endfor %}
+                            </select>
+                        <p><a onclick="MoveAllElements('id_{{ field.name }}_from', 'id_{{ field.name }}_to')">全选></a></p>
+                        </div>
+                        <div class="col-md-5">
+                            <select myflag="selected_m2m" multiple class="form-control" id="id_{{ field.name }}_to" name="{{ field.name }}">
+                                {% get_selected_m2m_data field.name form_obj admin_class as selected_m2m_data %}
+                                {% for obj in selected_m2m_data %}
+                                    <option value="{{ obj.id }}" ondblclick="MoveSelectedOption(this,'id_{{ field.name }}_from')">{{ obj }}</option>
+                                {% endfor %}
+                            </select>
+                         <p><a onclick="MoveAllElements('id_{{ field.name }}_to', 'id_{{ field.name }}_from')"><删除全部</a></p>
+                        </div>
+                    {% else %}
+                        {{ field }}
+                    {% endif %}
+                    <span style="color: red">{{ field.errors.0 }}</span>
+                </div>
+            </div>
+        {% endfor %}
+        {% csrf_token %}
+
+        {% if not admin_class.form_add %}
+            {# 当修改数据时，才显示下方只读字段，当增加数据时，下方则不会显示 #}
+            {% for field in admin_class.readonly_fields %}
+                <label class="col-sm-2 control-label">{{ field }}</label>
+                <div class="col-sm-10">
+                    <p>{% get_obj_field_val form_obj field %}</p>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="form-group">
+            <div class="col-sm-offset-2 col-sm-4">
+                <button type="submit" class="btn btn-primary">提交</button>
+            </div>
+            {% url 'djadmin:table_add' app_name model_name as table_add %}
+                {% if request.path != table_add %}
+                <div class="col-sm-offset-2 col-sm-4">
+                    <a class="btn btn-danger" href="{% url 'djadmin:table_delete' app_name model_name obj_id %}">删除</a>
+                </div>
+            {% endif %}
+        </div>
+    </form>
+
+    <script>
+        function MoveSelectedOption(ele, target_id) {
+            let new_target_id = $(ele).parent().attr('id');
+            let option = "<option value='" + $(ele).val() +"'ondblclick=MoveSelectedOption(this,'"+ new_target_id +"') >" + $(ele).text() +"</option>";
+            //将双击的元素添加到另一方
+            $("#"+ target_id).append(option);
+            //移除本方的元素
+            $(ele).remove();
+        }
+
+        function VerificationBeforeFormSubmit() {
+            //提交表单时选中所有的select
+            $("select[myflag] option").prop('selected', true);
+        }
+
+        function MoveAllElements(from_id, to_id) {
+        console.log($("#" + from_id).children())
+        $("#" + from_id).children().each(function () {
+            MoveSelectedOption(this, to_id);
+        })
+    }
+
+       function FuzzySearch(ele) {
+        //过滤多选框中的数据
+        console.log($(ele).val());
+        let search_text = $(ele).val().toUpperCase();
+        $(ele).next().children().each(function () {
+            if ($(this).text().toUpperCase().search(search_text) !== -1) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        })
+    }
+    </script>
+{% endblock %}
